@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+<title>Dental Beat Magazine</title>
+
+<style>
+
+body{
+margin:0;
+font-family:Arial;
+background:#222;
+color:white;
+}
+
+.container{
+display:flex;
+height:100vh;
+}
+
+.pdfviewer{
+width:70%;
+}
+
+.sidepanel{
+width:30%;
+background:#111;
+padding:10px;
+}
+
+iframe{
+width:100%;
+height:100%;
+border:none;
+}
+
+.videoBox{
+height:50%;
+}
+
+.audioBox{
+height:50%;
+padding-top:20px;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+<div class="pdfviewer">
+
+<iframe src="magazine.pdf#toolbar=0"></iframe>
+
+</div>
+
+<div class="sidepanel">
+
+<div class="videoBox">
+
+<h3>Video Explanation</h3>
+
+<iframe id="videoFrame" src=""></iframe>
+
+</div>
+
+<div class="audioBox">
+
+<h3>Audio</h3>
+
+<audio id="audioPlayer" controls></audio>
+
+</div>
+
+</div>
+
+</div>
+
+<script>
+
+function playVideo(id){
+
+document.getElementById("videoFrame").src =
+"https://www.youtube.com/embed/" + id;
+
+}
+
+function playAudio(file){
+
+document.getElementById("audioPlayer").src = file;
+
+}
+
+</script>
+
+</body>
+
+</html>
