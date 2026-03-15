@@ -4,6 +4,12 @@
 user-select:none;
 }
 
+img{
+pointer-events:none;
+user-select:none;
+-webkit-user-drag:none;
+}
+
 body{
 margin:0;
 background:#111;
