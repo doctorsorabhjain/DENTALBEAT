@@ -74,6 +74,13 @@ let gridActive = false
 
 let currentSlide=1
 let currentAudio=null
+let audioUnlocked=false
+
+document.addEventListener("click",()=>{
+if(audioUnlocked) return
+audioUnlocked=true
+new Audio().play().catch(()=>{})
+})
 
 const pageCache={}
 let slideLoadToken=0
