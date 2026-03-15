@@ -3,94 +3,122 @@
 
 <head>
 
-<title>Dental Beat Magazine</title>
+<link rel="icon" href="data:,">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<link rel="manifest" href="manifest.json">
+<title>IDA _MWSB Dental Beat 2026</title>
 
-<style>
-
-body{
-margin:0;
-font-family:Arial;
-background:#222;
-color:white;
-}
-
-.container{
-display:flex;
-height:90vh;
-}
-
-.pdfviewer{
-width:65%;
-}
-
-.videoarea{
-width:35%;
-background:#111;
-padding:10px;
-}
-
-iframe{
-width:100%;
-height:100%;
-border:none;
-}
-
-#audioPlayer{
-width:100%;
-height:70px;
-background:#333;
-display:flex;
-align-items:center;
-justify-content:center;
-}
-
-</style>
+<link rel="stylesheet" href="css/styles.css">
 
 </head>
 
+
 <body>
 
-<div class="container">
+<!-- ================= VIEWER ================= -->
 
-<div class="pdfviewer">
 
-<iframe src="magazine.pdf#toolbar=0"></iframe>
+<div id="viewer">
 
-</div>
+<img id="slideImage">
 
-<div class="videoarea">
-
-<h3>Video Explanation</h3>
-
-<iframe id="videoFrame" src="" allowfullscreen></iframe>
+<div id="hotspotLayer"></div>
 
 </div>
 
+<div id="pageNumber"></div>
+
+
+<!-- ================= NAVIGATION ================= -->
+
+<div id="navBar">
+
+<button onclick="prevSlide()">Previous</button>
+<button onclick="nextSlide()">Next</button>
+
 </div>
 
-<div id="audioPlayer">
 
-<audio id="audio" controls></audio>
+<!-- ================= THUMBNAILS ================= -->
 
+<div id="thumbBar"></div>
+
+
+<!-- ================= VIDEO POPUP ================= -->
+
+<div id="videoPopup" class="hidden">
+<div id="videoContainer"></div>
 </div>
+
+
+
+<!-- ================= SERVICE WORKER ================= -->
 
 <script>
 
-function playVideo(videoID){
+if("serviceWorker" in navigator){
 
-document.getElementById("videoFrame").src =
-"https://www.youtube.com/embed/" + videoID;
-
-}
-
-function playAudio(audioFile){
-
-document.getElementById("audio").src = audioFile;
+navigator.serviceWorker
+.register("sw.js")
+.then(()=>console.log("Service worker registered"))
 
 }
 
 </script>
 
-</body>
 
+
+<!-- ================= ISSUE SELECTOR ================= -->
+
+<script>
+
+/* Read issue from URL */
+
+const params = new URLSearchParams(window.location.search)
+
+window.ISSUE_PATH = params.get("issue") || "2026/issue1"
+
+</script>
+
+
+
+<!-- ================= LOAD ISSUE CONFIG ================= -->
+
+<script>
+
+const script = document.createElement("script")
+script.src = "issues/" + window.ISSUE_PATH + "/config.js"
+
+script.onload = function(){
+
+console.log("CONFIG LOADED:",window.FLIPBOOK_CONFIG)
+
+/* start viewer AFTER config loads */
+
+if(window.safeInit){
+safeInit()
+}
+
+}
+
+document.head.appendChild(script)
+
+</script>
+
+
+
+<!-- ================= LOAD PLAYER ================= -->
+
+<script src="js/player.js"></script>
+
+<!-- PWA disabled
+<script>
+if("serviceWorker" in navigator){
+navigator.serviceWorker.register("sw.js")
+}
+</script>
+-->
+
+</body>
 </html>
