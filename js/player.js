@@ -5,6 +5,8 @@ console.log("Flipbook engine loaded:",ISSUE)
 const style = document.createElement("style")
 
 style.innerHTML = `
+
+
 .galleryViewer{
 position:fixed;
 top:0;
@@ -70,7 +72,8 @@ let galleryIndex=0
 let galleryOverlay=null
 let gridStartIndex = 0
 let gridActive = false
-
+let leftArrow
+let rightArrow
 
 let currentSlide=1
 let currentAudio=null
@@ -166,6 +169,7 @@ slideBuffer.loading="eager"
 
 viewer.style.transform="scale(1)"
 
+if(!("ontouchstart" in window)){
 viewer.addEventListener("click",function(e){
 
 if(zoomViewerOpen) return
@@ -178,6 +182,7 @@ prevSlide()
 }
 
 })
+}
 
 
 viewer.addEventListener("touchstart",touchStart,{passive:true})
@@ -313,6 +318,7 @@ panY=0
 
 viewer.style.transform="translate(0px,0px) scale(1)"
 
+
 }
 
 pinchActive=false
@@ -447,12 +453,19 @@ slideBuffer.decode?.().catch(()=>{})
 
 requestAnimationFrame(()=>{
 
+slideImage.classList.remove("loaded")
+
 slideImage.src = slideBuffer.src
 
 slideImage.onload = function(){
-renderHotspots(currentSlide)
-}
 
+slideImage.classList.add("loaded")
+
+slideImage.style.willChange="auto"
+
+renderHotspots(currentSlide)
+
+}
 
 const thumbs=document.querySelectorAll("#thumbBar img")
 
@@ -465,6 +478,20 @@ t.style.border="2px solid transparent"
 t.style.transform="scale(1)"
 }
 })
+
+/* auto-scroll filmstrip to active page */
+
+const activeThumb = thumbs[currentSlide-1]
+
+if(activeThumb){
+
+activeThumb.scrollIntoView({
+behavior:"smooth",
+inline:"center",
+block:"nearest"
+})
+
+}
 
 document.getElementById("pageNumber").textContent =
 currentSlide + " / " + window.FLIPBOOK_CONFIG.totalSlides
@@ -495,6 +522,16 @@ cacheSlide("Slide"+prev)
 
 }
 
+/* immediate next-slide preload */
+
+let fastNext = currentSlide + 1
+
+if(fastNext <= window.FLIPBOOK_CONFIG.totalSlides){
+
+let imgFast = new Image()
+imgFast.src = getSlideSrc("Slide"+fastNext)
+
+}
 
 /* image ready */
 
@@ -822,12 +859,33 @@ galleryImages = (window.galleryData[name] || []).map(src => BASE + "/" + src)
 
 galleryIndex = 0
 
-/* pre-cache first 18 */
+/* pre-cache loads one every 120ms */
 
-galleryImages.slice(0,18).forEach(src=>{
-let img = new Image()
-img.src = src.startsWith("issues") ? src : BASE + "/" + src
-})
+function preloadGalleryStream(){
+
+let index=0
+
+function loadNext(){
+
+if(index>=galleryImages.length) return
+
+let img=new Image()
+
+img.onload=function(){
+index++
+setTimeout(loadNext,120)
+}
+
+img.src=galleryImages[index]
+
+}
+
+loadNext()
+
+}
+
+preloadGalleryStream()
+
 
 showGalleryGrid()
 
@@ -879,6 +937,29 @@ grid.appendChild(img)
 
 galleryOverlay.appendChild(grid)
 
+/* grid arrows */
+
+leftArrow=document.createElement("div")
+leftArrow.className="galleryArrow left"
+leftArrow.innerHTML="‹"
+leftArrow.onclick=(e)=>{
+e.stopPropagation()
+prevGrid()
+}
+
+rightArrow=document.createElement("div")
+rightArrow.className="galleryArrow right"
+rightArrow.innerHTML="›"
+rightArrow.onclick=(e)=>{
+e.stopPropagation()
+nextGrid()
+}
+
+galleryOverlay.appendChild(leftArrow)
+galleryOverlay.appendChild(rightArrow)
+
+refreshGrid()
+
 galleryOverlay.onclick=function(){
 galleryOverlay.remove()
 galleryOverlay=null
@@ -902,6 +983,21 @@ grid.style.opacity="0"
 setTimeout(()=>{
 grid.innerHTML=""
 
+/* grid arrow visibility */
+
+if(gridStartIndex===0){
+leftArrow.style.opacity="0.25"
+}else{
+leftArrow.style.opacity="1"
+}
+
+if(gridStartIndex+9>=galleryImages.length){
+rightArrow.style.opacity="0.25"
+}else{
+rightArrow.style.opacity="1"
+}
+
+
 galleryImages.slice(gridStartIndex,gridStartIndex+9).forEach((src,i)=>{
 
 let img=document.createElement("img")
@@ -922,23 +1018,6 @@ grid.style.transform="translateX(0)"
 grid.style.opacity="1"
 
 },120)
-
-
-galleryImages.slice(gridStartIndex,gridStartIndex+9).forEach((src,i)=>{
-
-let img=document.createElement("img")
-img.loading="lazy"
-img.src=src
-
-img.onclick=function(e){
-e.stopPropagation()
-galleryIndex=gridStartIndex+i
-openGalleryViewer()
-}
-
-grid.appendChild(img)
-
-})
 
 }
 
@@ -994,6 +1073,25 @@ viewer.remove()
 
 viewer.appendChild(close)
 
+let left=document.createElement("div")
+left.className="galleryArrow left"
+left.innerHTML="‹"
+left.onclick=(e)=>{
+e.stopPropagation()
+prev()
+}
+
+let right=document.createElement("div")
+right.className="galleryArrow right"
+right.innerHTML="›"
+right.onclick=(e)=>{
+e.stopPropagation()
+next()
+}
+
+viewer.appendChild(left)
+viewer.appendChild(right)
+
 /* FIGURE THUMBNAIL STRIP */
 
 let strip=document.createElement("div")
@@ -1035,12 +1133,29 @@ viewer.appendChild(counter)
 
 document.body.appendChild(viewer)
 
+
 function show(){
+
+if(!galleryImages[galleryIndex]) return
 
 img.src = galleryImages[galleryIndex]
 
 counter.textContent =
 (galleryIndex+1)+" / "+galleryImages.length
+
+/* hide arrows when limits reached */
+
+if(galleryIndex===0){
+left.style.opacity="0.25"
+}else{
+left.style.opacity="1"
+}
+
+if(galleryIndex===galleryImages.length-1){
+right.style.opacity="0.25"
+}else{
+right.style.opacity="1"
+}
 
 preload()
 
@@ -1152,13 +1267,15 @@ show()
 
 function nextSlide(){
 
+slideImage.style.willChange="transform"
+
 if(currentSlide >= window.FLIPBOOK_CONFIG.totalSlides) return
 
 slideImage.style.transformOrigin="left center"
 
 slideImage.style.transition="transform .55s cubic-bezier(.22,.61,.36,1)"
 
-slideImage.style.transform="perspective(1600px) rotateY(-60deg)"
+slideImage.style.transform="perspective(1600px) rotateY(-50deg)"
 slideImage.style.boxShadow="0 0 40px rgba(0,0,0,.5)"
 
 setTimeout(()=>{
@@ -1174,13 +1291,15 @@ loadSlide("Slide"+(currentSlide+1))
 
 function prevSlide(){
 
+slideImage.style.willChange="transform"
+
 if(currentSlide<=1) return
 
 slideImage.style.transformOrigin="right center"
 
 slideImage.style.transition="transform .6s cubic-bezier(.25,.8,.25,1)"
 
-slideImage.style.transform="perspective(1400px) rotateY(60deg)"
+slideImage.style.transform="perspective(1400px) rotateY(50deg)"
 slideImage.style.boxShadow="0 0 40px rgba(0,0,0,.5)"
 
 setTimeout(()=>{
@@ -1219,7 +1338,7 @@ const observer=new IntersectionObserver(entries=>{
 entries.forEach(entry=>{
 if(entry.isIntersecting){
 img.src=img.dataset.src
-observer.disconnect()
+observer.unobserve(img)
 }
 })
 })
