@@ -1,19 +1,18 @@
-const CACHE="flipbook-v1"
+self.addEventListener("fetch", event => {
 
-self.addEventListener("install",e=>{
-self.skipWaiting()
-})
+  const url = new URL(event.request.url)
 
-self.addEventListener("activate",e=>{
-self.clients.claim()
-})
+  // ❌ NEVER cache index.html or query-based requests
+  if (url.pathname === "/" || url.search.includes("issue=")) {
+    event.respondWith(fetch(event.request))
+    return
+  }
 
-self.addEventListener("fetch",e=>{
-
-e.respondWith(
-
-fetch(e.request).catch(()=>caches.match(e.request))
-
-)
+  // ✅ cache only static assets
+  event.respondWith(
+    caches.match(event.request).then(res => {
+      return res || fetch(event.request)
+    })
+  )
 
 })
