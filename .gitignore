@@ -8,3 +8,6 @@ index.html
 .git
 .git/*
 node_modules
+*.zip
+*.mp4
+*.psd
