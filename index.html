@@ -119,7 +119,7 @@ window.ISSUE_PATH = params.get("issue") || "2026/issue1"
 <script>
 
 const script = document.createElement("script")
-script.src = "./issues/" + window.ISSUE_PATH + "/config.js?v=" + Date.now()
+script.src = window.location.origin + "/issues/" + window.ISSUE_PATH + "/config.js?v=" + Date.now()
 
 script.onload = function(){
 
