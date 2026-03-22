@@ -4,5 +4,5 @@ window.FLIPBOOK_CONFIG={
   "pageFolder": "pages/",
   "hotspotFile": "hotspots.json",
   "galleryFile": "gallery.json",
-  "issuePath": "2026/issue2"
+  "issuePath": "issue2"
 }
