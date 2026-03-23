@@ -270,7 +270,21 @@ localStorage.setItem("pageStats", JSON.stringify(data))
 
 </script>
 
+function highlightHotspots(){
 
+let hs = document.querySelectorAll(".hotspot")
+
+hs.forEach(h=>{
+h.style.outline="2px solid rgba(0,255,255,0.4)"
+})
+
+setTimeout(()=>{
+hs.forEach(h=>{
+h.style.outline="none"
+})
+},800)
+
+}
 
 <script>
 
