@@ -270,35 +270,7 @@ localStorage.setItem("pageStats", JSON.stringify(data))
 
 </script>
 
-<script>
 
-function highlightHotspots(){
-
-let hs = document.querySelectorAll(".hotspot")
-
-hs.forEach(h=>{
-h.style.transition="all 0.3s"
-h.style.boxShadow="0 0 20px rgba(0,255,255,0.8)"
-h.style.background="rgba(0,255,255,0.15)"
-})
-
-setTimeout(()=>{
-hs.forEach(h=>{
-h.style.boxShadow="none"
-h.style.background="transparent"
-})
-},3000)
-
-}
-
-// run after slide loads
-setInterval(()=>{
-if(document.querySelector(".hotspot")){
-highlightHotspots()	
-}
-},2000)
-
-</script>
 
 <script>
 
