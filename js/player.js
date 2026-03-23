@@ -1,5 +1,12 @@
 const ISSUE = window.ISSUE_PATH || "2026/issue1"
 const BASE = "issues/" + ISSUE
+
+
+// ✅ ADD THIS HERE (exact position)
+function deepClean(data){
+    return data
+}
+
 console.log("Flipbook engine loaded:",ISSUE)
 
 const style = document.createElement("style")
@@ -65,6 +72,7 @@ let slideBuffer
 let videoPopup
 let videoContainer
 let viewer
+let lastRenderedPage = null
 
 let galleryImages=[]
 let zoomViewerOpen=false
@@ -93,7 +101,7 @@ let hotspotsLoaded=false
 
 let startX=0
 let endX=0
-let swipeThreshold=120
+let swipeThreshold=180
 
 let zoomScale=1
 let pinchStartDist=0
@@ -172,14 +180,24 @@ viewer.style.transform="scale(1)"
 if(!("ontouchstart" in window)){
 viewer.addEventListener("click",function(e){
 
-if(zoomViewerOpen) return
-if(gridActive) return
+    // 🚫 VERY IMPORTANT → STOP if hotspot clicked
+    if(e.target.closest(".hotspot")) return
 
-if(e.clientX > window.innerWidth/2){
-nextSlide()
-}else{
-prevSlide()
-}
+    if(zoomViewerOpen) return
+    if(gridActive) return
+
+    const margin = window.innerWidth * 0.15  // safe zone
+
+    // 🚫 ignore edge clicks (mobile conflict)
+    if(e.clientX < margin || e.clientX > window.innerWidth - margin){
+        return
+    }
+
+    if(e.clientX > window.innerWidth/2){
+        nextSlide()
+    }else{
+        prevSlide()
+    }
 
 })
 }
@@ -247,6 +265,13 @@ return
 
 function touchStart(e){
 
+// 🚫 ADD THIS BLOCK (FIRST LINE INSIDE FUNCTION)
+    if(e.target.closest(".hotspot")){
+        startX = 0
+        endX = 0
+        return
+    }
+
 if(e.touches.length===1){
 
 startX=e.touches[0].clientX
@@ -309,6 +334,10 @@ endX=e.touches[0].clientX
 
 
 function touchEnd(){
+
+    // 🚫 ADD THIS LINE
+    if(startX === 0 && endX === 0) return
+
 if(zoomViewerOpen) return
 if(zoomScale<=1.05){
 
@@ -324,6 +353,10 @@ viewer.style.transform="translate(0px,0px) scale(1)"
 pinchActive=false
 
 let delta=endX-startX
+
+
+// 🚫 ignore tiny movement (tap noise)
+if(Math.abs(delta) < 30) return
 
 if(zoomScale>1 || Math.abs(delta)<swipeThreshold) return
 
@@ -459,6 +492,8 @@ slideImage.src = slideBuffer.src
 
 slideImage.onload = function(){
 
+slideImage.onload = null   // ✅ ADD THIS LINE (FIRST LINE)
+
 slideImage.classList.add("loaded")
 
 slideImage.style.willChange="auto"
@@ -570,6 +605,21 @@ playAudio(`${BASE}/audio/${h.file}`)
 box.addEventListener("touchstart",(e)=>{
 e.stopPropagation()
 
+   // ✅ ONLY for audio_click
+    if(h.type === "audio_click"){
+        stopAudio()
+
+        const audio = new Audio(`${BASE}/audio/${h.file}`)
+        audio.playsInline = true
+
+        // 🔥 critical: NO async chain, NO reuse
+        audio.play()
+
+        currentAudio = audio
+        return
+    }
+
+
 if(h.type==="audio"){
 playAudio(`${BASE}/audio/${h.file}`)
 }
@@ -581,8 +631,8 @@ const icon=document.createElement("img")
 
 icon.src=`${BASE}/icons/${h.file}`
 
-icon.style.width="40px"
-icon.style.height="40px"
+icon.style.width="min(40px, 6vw)"
+icon.style.height="min(40px, 6vw)"
 
 icon.style.position="absolute"
 icon.style.left="50%"
@@ -591,96 +641,17 @@ icon.style.transform="translate(-50%,-50%)"
 
 icon.style.pointerEvents="none"
 
+box.style.opacity = 1   // ✅ ONLY FOR ICON TYPE
 box.appendChild(icon)
 
 }
 
 box.addEventListener("click",(e)=>{
 e.stopPropagation()
+
 handleAction(h)
 })
 
-const handle=document.createElement("div")
-
-handle.style.position="absolute"
-handle.style.width="12px"
-handle.style.height="12px"
-handle.style.background="#fff"
-handle.style.border="1px solid black"
-handle.style.right="-6px"
-handle.style.bottom="-6px"
-handle.style.cursor="nwse-resize"
-
-
-box.appendChild(handle)
-
-let dragging=false
-let offsetX=0
-let offsetY=0
-
-box.addEventListener("mousedown",(e)=>{
-
-if(e.target===handle) return
-
-dragging=true
-
-offsetX=e.offsetX
-offsetY=e.offsetY
-
-})
-
-document.addEventListener("mousemove",(e)=>{
-
-if(!dragging) return
-
-const rect=slideImage.getBoundingClientRect()
-
-let x=(e.clientX-rect.left-offsetX)/rect.width
-let y=(e.clientY-rect.top-offsetY)/rect.height
-
-box.dataset.x = x
-box.dataset.y = y
-
-box.style.left=(x*100)+"%"
-box.style.top=(y*100)+"%"
-
-})
-
-document.addEventListener("mouseup",()=>{
-
-dragging=false
-
-})
-
-handle.addEventListener("mousedown",(e)=>{
-
-e.stopPropagation()
-
-let startW=box.offsetWidth
-let startH=box.offsetHeight
-
-let startX=e.clientX
-let startY=e.clientY
-
-function resize(ev){
-
-let w=startW+(ev.clientX-startX)
-let h=startH+(ev.clientY-startY)
-
-box.style.width=w+"px"
-box.style.height=h+"px"
-
-}
-
-function stop(){
-document.removeEventListener("mousemove",resize)
-document.removeEventListener("mouseup",stop)
-}
-
-document.addEventListener("mousemove",resize)
-document.addEventListener("mouseup",stop)
-
-})
 
 hotspotLayer.appendChild(box)
 
@@ -802,17 +773,32 @@ let lastAudio=null
 
 function playAudio(src){
 
-if(lastAudio===src) return
+    if(lastAudio===src) return
 
-lastAudio=src
+    lastAudio=src
 
-stopAudio()
+    stopAudio()
 
-currentAudio=new Audio(src)
+    currentAudio=new Audio(src)
 
-currentAudio.play().catch(()=>{
-console.log("Audio blocked until user interaction")
-})
+    currentAudio.play().catch(()=>{
+
+        console.log("Audio blocked until user interaction")
+
+        // 🔥 RETRY AFTER USER UNLOCK
+      const audioRef = currentAudio
+
+const retry = () => {
+    document.removeEventListener("click", retry)
+
+    if(audioRef){
+        audioRef.play().catch(()=>{})
+    }
+}
+
+        document.addEventListener("click", retry)
+
+    })
 
 }
 
@@ -850,7 +836,7 @@ async function openGallery(name){
 if(!window.galleryData){
 
 let res = await fetch(`${BASE}/gallery.json`)
-window.galleryData = await res.json()
+window.galleryData = deepClean(await res.json())
 
 }
 
@@ -896,7 +882,12 @@ function showGalleryGrid(){
 gridActive = true
 gridStartIndex = 0
 
-if(!galleryImages.length) return
+if(!galleryImages.length) {
+
+alert("Images not loading. Tap Refresh button.")
+
+return
+}
 
 galleryOverlay=document.createElement("div")
 galleryOverlay.className="galleryPopup"
@@ -1361,7 +1352,7 @@ if(hotspotsLoaded) return
 
 let res=await fetch(`${BASE}/hotspots.json`)
 
-hotspots=await res.json()
+hotspots = deepClean(await res.json())
 
 hotspotsLoaded=true
 
@@ -1370,6 +1361,12 @@ hotspotsLoaded=true
 
 
 function renderHotspots(page){
+
+if(lastRenderedPage === page){
+    return
+}
+
+lastRenderedPage = page
 
 hotspotLayer.innerHTML=""
 
@@ -1431,35 +1428,18 @@ if(e.key==="ArrowLeft") prevSlide()
 
 document.addEventListener("keydown",function(e){
 
-if(e.key==="h" || e.key==="H"){
-
-document.querySelectorAll(".hotspot").forEach(h=>{
-
-h.style.border="4px solid red"
-h.style.background="rgba(255,0,0,0.25)"
-
-})
-
-
-console.log("Hotspot debug mode ON")
-
-}
 
 })
 
 window.addEventListener("resize",function(){
 
-setTimeout(()=>{
-renderHotspots(currentSlide)
-},120)
+ // do nothing (prevent re-render flicker)
 
 })
 
 window.addEventListener("orientationchange",function(){
 
-setTimeout(()=>{
-renderHotspots(currentSlide)
-},200)
+ // do nothing
 
 })
 

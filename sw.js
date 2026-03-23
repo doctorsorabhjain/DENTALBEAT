@@ -1,28 +1,19 @@
-const CACHE_NAME = "flipbook-v1"
+const CACHE="flipbook-v1"
 
-self.addEventListener("install", e => {
-  self.skipWaiting()
+self.addEventListener("install",e=>{
+self.skipWaiting()
 })
 
-self.addEventListener("activate", e => {
-  clients.claim()
+self.addEventListener("activate",e=>{
+self.clients.claim()
 })
 
 self.addEventListener("fetch", event => {
 
-  const url = new URL(event.request.url)
+event.respondWith(
 
-  // ❌ Do NOT cache main page or issue-based URLs
-  if (url.pathname === "/" || url.search.includes("issue=")) {
-    event.respondWith(fetch(event.request))
-    return
-  }
-
-  // ✅ Cache other files (images, js, css)
-  event.respondWith(
-    caches.match(event.request).then(res => {
-      return res || fetch(event.request)
-    })
-  )
+fetch(event.request, { cache: "no-store" })
+.catch(()=> caches.match(event.request))
+)
 
 })

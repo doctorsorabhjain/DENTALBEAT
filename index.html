@@ -3,6 +3,7 @@
 
 <head>
 
+
 <link rel="icon" href="data:,">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -24,7 +25,6 @@
 <img id="slideImage">
 
 <div id="hotspotLayer"></div>
-
 </div>
 
 <div id="pageNumber"></div>
@@ -52,6 +52,38 @@
 </div>
 
 
+<div onclick="showHelp()" 
+style="
+position:fixed;
+bottom:20px;
+right:20px;
+background:#00ffe1;
+color:black;
+padding:10px 14px;
+border-radius:20px;
+font-weight:bold;
+cursor:pointer;
+z-index:9999;
+box-shadow:0 4px 10px rgba(0,0,0,0.3);
+">
+?
+</div>
+
+<div onclick="location.reload()" 
+style="
+position:fixed;
+bottom:20px;
+left:20px;
+background:#ff4444;
+color:white;
+padding:8px 12px;
+border-radius:15px;
+cursor:pointer;
+z-index:9999;
+font-size:12px;
+">
+Refresh
+</div>
 
 <!-- ================= SERVICE WORKER ================= -->
 
@@ -88,11 +120,13 @@ window.ISSUE_PATH = params.get("issue") || "2026/issue1"
 <script>
 
 const script = document.createElement("script")
-script.src = "issues/" + window.ISSUE_PATH + "/config.js"
+script.src = "./issues/" + window.ISSUE_PATH + "/config.js?v=" + Date.now()
 
 script.onload = function(){
 
-console.log("CONFIG LOADED:",window.FLIPBOOK_CONFIG)
+window.FLIPBOOK_CONFIG = deepClean(window.FLIPBOOK_CONFIG)
+
+console.log("CONFIG CLEANED:", window.FLIPBOOK_CONFIG)
 
 /* start viewer AFTER config loads */
 
@@ -107,10 +141,54 @@ document.head.appendChild(script)
 </script>
 
 
+<div id="startOverlay" style="
+position:fixed;
+top:0;left:0;width:100%;height:100%;
+background:black;color:white;
+display:flex;flex-direction:column;
+align-items:center;justify-content:center;
+z-index:99999;text-align:center;padding:20px;
+font-family:Arial;
+">
+
+<h2>Welcome to Digital Magazine</h2>
+
+<p style="max-width:500px;line-height:1.6;">
+- Tap anywhere to start<br>
+- Audio will play after first tap<br>
+- Swipe or click to change pages<br>
+- Tap images for zoom & gallery<br>
+- Videos may show ads - tap skip<br><br>
+<strong>Tap anywhere to begin</strong>
+</p>
+
+</div>
+
+<script>
+
+if(!localStorage.getItem("visitedMagazine")){
+
+document.getElementById("startOverlay").style.display="flex"
+
+}else{
+document.getElementById("startOverlay").style.display="none"
+}
+
+document.getElementById("startOverlay").addEventListener("click", function(){
+
+    localStorage.setItem("visitedMagazine","yes")
+
+    this.style.display = "none"
+    document.body.click()
+
+})
+
+
+</script>
 
 <!-- ================= LOAD PLAYER ================= -->
 
-<script src="js/player.js"></script>
+<script src="js/player.js?v=1"></script>
 
 <!-- PWA disabled
 <script>
@@ -119,6 +197,229 @@ navigator.serviceWorker.register("sw.js")
 }
 </script>
 -->
+
+<script>
+
+function showHelp(){
+
+let msg =
+"TAP once to activate audio\n\n" +
+"SWIPE or CLICK sides to change pages\n\n" +
+"TAP images for zoom / gallery\n\n" +
+"VIDEOS may show ads - press SKIP\n\n" +
+"If something doesnt load - refresh page"
+
+alert(cleanText(msg))
+
+}
+
+</script>
+
+<script>
+
+setTimeout(()=>{
+
+if(!window.audioUnlocked){
+
+let unlockDiv=document.createElement("div")
+
+unlockDiv.innerHTML="Tap to Enable Audio"
+
+unlockDiv.style = `
+position:fixed;
+bottom:80px;
+left:50%;
+transform:translateX(-50%);
+background:black;
+color:white;
+padding:12px 18px;
+border-radius:25px;
+z-index:99999;
+font-family:Arial;
+cursor:pointer;
+`
+
+unlockDiv.onclick=function(){
+document.body.click()
+unlockDiv.remove()
+}
+
+document.body.appendChild(unlockDiv)
+
+}
+
+},2000)
+
+</script>
+
+<script>
+
+setInterval(()=>{
+
+if(window.currentSlide){
+
+let data = JSON.parse(localStorage.getItem("pageStats") || "{}")
+
+data[window.currentSlide] = (data[window.currentSlide] || 0) + 1
+
+localStorage.setItem("pageStats", JSON.stringify(data))
+
+}
+
+},5000)
+
+</script>
+
+<script>
+
+function highlightHotspots(){
+
+let hs = document.querySelectorAll(".hotspot")
+
+hs.forEach(h=>{
+h.style.transition="all 0.3s"
+h.style.boxShadow="0 0 20px rgba(0,255,255,0.8)"
+h.style.background="rgba(0,255,255,0.15)"
+})
+
+setTimeout(()=>{
+hs.forEach(h=>{
+h.style.boxShadow="none"
+h.style.background="transparent"
+})
+},3000)
+
+}
+
+// run after slide loads
+setInterval(()=>{
+if(document.querySelector(".hotspot")){
+highlightHotspots()	
+}
+},2000)
+
+</script>
+
+<script>
+
+function showAudioFeedback(){
+
+let el=document.createElement("div")
+
+el.innerHTML="Audio Enabled"
+
+el.style = `
+position:fixed;
+top:20px;
+left:50%;
+transform:translateX(-50%);
+background:#00ffe1;
+color:black;
+padding:8px 14px;
+border-radius:20px;
+z-index:99999;
+font-weight:bold;
+`
+
+document.body.appendChild(el)
+
+setTimeout(()=>el.remove(),1500)
+
+}
+
+</script>
+
+<script>
+
+function cleanText(str){
+    if(!str) return str;
+
+    return str
+        .replace(/[\u2018\u2019]/g, "'")     // smart apostrophe → '
+        .replace(/[\u201C\u201D]/g, '"')     // smart quotes → "
+        .replace(/\u2022/g, '-')             // bullet → -
+        .replace(/\u2192/g, '->')            // arrow → ->
+        .replace(/\u00A0/g, ' ')             // NBSP → space
+        .replace(/[^\x00-\x7F]/g, '')        // remove any remaining unicode junk
+}
+
+</script>
+
+<script>
+
+function deepClean(obj){
+
+    if(typeof obj === "string"){
+        return cleanText(obj)
+    }
+
+    if(Array.isArray(obj)){
+        return obj.map(item => deepClean(item))
+    }
+
+    if(typeof obj === "object" && obj !== null){
+        let newObj = {}
+        for(let key in obj){
+            newObj[key] = deepClean(obj[key])
+        }
+        return newObj
+    }
+
+    return obj
+}
+
+</script>
+
+<script>
+
+document.addEventListener("DOMContentLoaded", function(){
+
+    document.querySelectorAll("*").forEach(el=>{
+
+        if(el.childNodes.length === 1 && el.childNodes[0].nodeType === 3){
+            el.textContent = cleanText(el.textContent)
+        }
+
+    })
+
+})
+
+</script>
+
+
+<script>
+
+document.body.addEventListener("click", function handleFirstTap(){
+
+    document.body.removeEventListener("click", handleFirstTap)
+
+    // 🔥 THIS IS THE REAL FIX
+    // trigger player's internal unlock logic
+    document.dispatchEvent(new Event("click"))
+
+    // feedback UI (optional)
+    let el=document.createElement("div")
+    el.innerHTML="Audio Enabled"
+
+    el.style = `
+    position:fixed;
+    top:20px;
+    left:50%;
+    transform:translateX(-50%);
+    background:#00ffe1;
+    color:black;
+    padding:8px 14px;
+    border-radius:20px;
+    z-index:99999;
+    font-weight:bold;
+    `
+
+    document.body.appendChild(el)
+    setTimeout(()=>el.remove(),1500)
+
+})
+
+</script>
 
 </body>
 </html>
