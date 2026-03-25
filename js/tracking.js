@@ -18,6 +18,8 @@ function getPage() {
   return window.currentPage || "unknown";
 }
 
+const ENV = location.hostname.includes("localhost") ? "local" : "live";
+
 function send(type, data = {}) {
 
   fetch(TRACK_URL, {
