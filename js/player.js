@@ -83,7 +83,17 @@ let gridActive = false
 let leftArrow
 let rightArrow
 
-let currentSlide=1
+window.currentSlide=1
+
+window.currentSlide = 1
+
+// 🔥 ADD THIS EXACT BLOCK HERE
+Object.defineProperty(window, "currentpage", {
+  get() {
+    return window.currentPage;
+  }
+});
+
 let currentAudio=null
 let audioUnlocked=false
 
@@ -176,6 +186,7 @@ slideBuffer.decoding="async"
 slideBuffer.loading="eager"
 
 viewer.style.transform="scale(1)"
+
 
 if(!("ontouchstart" in window)){
 viewer.addEventListener("click",function(e){
@@ -448,12 +459,25 @@ const token=slideLoadToken
 
 stopAll()
 
-currentSlide=Math.max(1,parseInt(name.replace("Slide","")))
+window.currentSlide = Math.max(1, parseInt(name.replace("Slide","")))
 
-if(currentSlide<1) currentSlide=1
-if(currentSlide>window.FLIPBOOK_CONFIG.totalSlides)
-currentSlide=window.FLIPBOOK_CONFIG.totalSlides
+// 🔥 CORRECT PAGE TRACKING
+window.currentPage = "page_" + window.currentSlide
 
+// ✅ alias for safety (case-insensitive support)
+window.currentpage = window.currentPage
+
+
+if (window.send) {
+    window.send("page_view");
+}
+
+// ✅ FIX: ALWAYS use window.currentSlide
+if(window.currentSlide < 1) window.currentSlide = 1
+
+if(window.currentSlide > window.FLIPBOOK_CONFIG.totalSlides){
+    window.currentSlide = window.FLIPBOOK_CONFIG.totalSlides
+}
 
 /* safety check */
 
@@ -498,14 +522,14 @@ slideImage.classList.add("loaded")
 
 slideImage.style.willChange="auto"
 
-renderHotspots(currentSlide)
+renderHotspots(window.currentSlide)
 
 }
 
 const thumbs=document.querySelectorAll("#thumbBar img")
 
 thumbs.forEach((t,i)=>{
-if(i+1===currentSlide){
+if(i+1===window.currentSlide){
 t.style.border="3px solid #00ffe1"
 t.style.transform="scale(1.25)"
 }else{
@@ -516,7 +540,7 @@ t.style.transform="scale(1)"
 
 /* auto-scroll filmstrip to active page */
 
-const activeThumb = thumbs[currentSlide-1]
+const activeThumb = thumbs[window.currentSlide-1]
 
 if(activeThumb){
 
@@ -529,9 +553,9 @@ block:"nearest"
 }
 
 document.getElementById("pageNumber").textContent =
-currentSlide + " / " + window.FLIPBOOK_CONFIG.totalSlides
+window.currentSlide + " / " + window.FLIPBOOK_CONFIG.totalSlides
 
-localStorage.setItem("lastPage",currentSlide)
+localStorage.setItem("lastPage",window.currentSlide)
 
 slideImage.style.transition="transform .45s cubic-bezier(.22,.61,.36,1)"
 
@@ -1260,7 +1284,7 @@ function nextSlide(){
 
 slideImage.style.willChange="transform"
 
-if(currentSlide >= window.FLIPBOOK_CONFIG.totalSlides) return
+if(window.currentSlide >= window.FLIPBOOK_CONFIG.totalSlides) return
 
 slideImage.style.transformOrigin="left center"
 
@@ -1274,7 +1298,7 @@ setTimeout(()=>{
 slideImage.style.transform="perspective(1400px) rotateY(0deg)"
 slideImage.style.boxShadow="0 0 20px rgba(0,0,0,.4)"
 
-loadSlide("Slide"+(currentSlide+1))
+loadSlide("Slide"+(window.currentSlide+1))
 
 },520)
 
@@ -1284,7 +1308,7 @@ function prevSlide(){
 
 slideImage.style.willChange="transform"
 
-if(currentSlide<=1) return
+if(window.currentSlide<=1) return
 
 slideImage.style.transformOrigin="right center"
 
@@ -1298,7 +1322,7 @@ setTimeout(()=>{
 slideImage.style.transform="perspective(1400px) rotateY(0deg)"
 slideImage.style.boxShadow="0 0 20px rgba(0,0,0,.4)"
 
-loadSlide("Slide"+(currentSlide-1))
+loadSlide("Slide"+(window.currentSlide-1))
 
 },520)
 
@@ -1369,6 +1393,24 @@ if(lastRenderedPage === page){
 lastRenderedPage = page
 
 hotspotLayer.innerHTML=""
+
+// ✅ SCALE HOTSPOTS TO IMAGE ONLY (CRITICAL FIX)
+
+const viewerRect = viewer.getBoundingClientRect()
+const imgRect = slideImage.getBoundingClientRect()
+
+const scaleX = imgRect.width / viewerRect.width
+const scaleY = imgRect.height / viewerRect.height
+
+const offsetX = (viewerRect.width - imgRect.width) / 2
+const offsetY = (viewerRect.height - imgRect.height) / 2
+
+hotspotLayer.style.transform = `
+translate(${offsetX}px, ${offsetY}px)
+scale(${scaleX}, ${scaleY})
+`
+
+hotspotLayer.style.transformOrigin = "top left"
 
 const list = hotspots[String(page)] || []
 
