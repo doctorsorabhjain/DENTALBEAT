@@ -1,0 +1,1955 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hotspot Finder Pro</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+<style>
+
+body{
+background:#222;
+color:white;
+font-family:Arial;
+margin:0;
+}
+
+.box.preview{
+border:3px dashed yellow;
+background:rgba(255,0,0,0.15);
+}
+
+.resizeHandle{
+position:absolute;
+width:12px;
+height:12px;
+background:white;
+border:2px solid black;
+right:-8px;
+bottom:-8px;
+cursor:nwse-resize;
+}
+
+.container{
+display:flex;
+gap:20px;
+padding:20px;
+}
+
+#hotkeyPanel{
+position:fixed;
+bottom:12px;
+left:12px;
+background:rgba(0,0,0,0.75);
+padding:12px;
+border:1px solid #444;
+border-radius:6px;
+font-size:13px;
+line-height:1.5;
+backdrop-filter:blur(6px);
+}
+
+/* LEFT PANEL */
+
+.leftPanel{
+width:280px;
+font-size:16px;
+line-height:1.6;
+color:#ddd;
+background:#1a1a1a;
+padding:15px;
+border-radius:8px;
+}
+
+
+/* CENTER VIEWER */
+
+.centerPanel{
+flex:1;
+text-align:center;
+}
+
+#viewer{
+position:relative;
+display:inline-block;
+cursor:crosshair;
+}
+
+#viewer img{
+display:block;
+width:100%;
+height:auto;
+}
+
+.box{
+position:absolute;
+pointer-events:auto;
+}
+
+#viewer.grid{
+background-image:
+linear-gradient(rgba(255,255,255,.05) 1px, transparent 1px),
+linear-gradient(90deg, rgba(255,255,255,.05) 1px, transparent 1px);
+background-size:20px 20px;
+}
+
+#page{
+width:900px;
+border:3px solid #aaa;
+display:block;
+box-shadow:0 0 15px rgba(0,0,0,0.6);
+}
+
+
+/* RIGHT PANEL */
+
+.toolGroup{
+border:1px solid #444;
+padding:10px;
+margin-bottom:12px;
+border-radius:8px;
+background:#2a2a2a;
+}
+
+.toolGroup b{
+display:block;
+margin-bottom:6px;
+color:#fff;
+}
+
+.toolGroup button{
+width:100%;
+margin-bottom:6px;
+}
+
+.rightPanel{
+width:260px;
+}
+
+/* hotspot box */
+
+.box{
+position:absolute;
+border:5px dashed red;
+cursor:move;
+will-change:transform;
+user-select:none;
+}
+
+.box.video{border-color:#2aa8ff}
+.box.audio{border-color:#00cc66}
+.box.jump{border-color:#ff9900}
+.box.gallery{border-color:#cc66ff}
+.box.back{border-color:#ff4444}
+
+
+.label{
+position:absolute;
+background:black;
+color:white;
+font-size:13px;
+padding:3px 6px;
+border-radius:4px;
+font-weight:bold;
+}
+
+
+/* text area */
+
+textarea{
+width:100%;
+height:200px;
+font-size:14px;
+margin-top:10px;
+}
+
+#hotspotList div{
+padding:4px;
+border-bottom:1px solid #444;
+}
+
+/* buttons stacked */
+
+.buttonStack{
+display:flex;
+flex-direction:column;
+gap:8px;
+margin-top:10px;
+
+}
+
+button{
+padding:8px 10px;
+font-size:15px;
+cursor:pointer;
+}
+
+#thumbs{
+margin-top:10px;
+max-height:100px;
+overflow-x:auto;
+white-space:nowrap;
+}
+
+#thumbs img{
+height:70px;
+margin:4px;
+cursor:pointer;
+border:2px solid #555;
+display:inline-block;
+}
+
+#thumbs img:hover{
+border:2px solid white;
+}
+
+input,select{
+padding:5px;
+margin:3px;
+font-size:14px;
+width:95%;
+}
+
+.controls{
+margin-top:10px;
+}
+
+</style>
+
+</head>
+
+
+
+
+<body>
+
+<div id="hotkeyPanel">
+
+<b>Hotkeys</b><br>
+
+U → Undo<br>
+Delete → Delete selected hotspot<br>
+N → Next slide<br>
+P → Previous slide<br>
+
+SHIFT + click → duplicate hotspot<br>
+CTRL + scroll → resize hotspot
+
+</div>
+
+
+<div class="container">
+
+<!-- LEFT PANEL -->
+<div class="leftPanel">
+
+<b>Field Guide</b><br>
+<br><br>
+<b>Hotkeys</b><br>
+
+SHIFT + drag → duplicate hotspot<br>
+CTRL + scroll → resize hotspot<br>
+U → undo<br>
+N → next slide<br>
+P → previous slide<br>
+
+Type examples:<br>
+jump → go to another slide<br>
+video → YouTube popup<br>
+audio → autoplay audio<br>
+audio_click → click audio<br>
+back → return to TOC page<br>
+external → open website<br>
+image_popup → show large image<br>
+zoom → figure zoom<br>
+gallery → image gallery<br>
+
+<br><br>
+
+<b>Hotspot Color Legend</b><br><br>
+
+<div style="display:flex;align-items:center;margin-bottom:6px">
+<div style="width:18px;height:18px;background:#ff9900;margin-right:8px"></div>
+Jump (go to slide)
+</div>
+
+<div style="display:flex;align-items:center;margin-bottom:6px">
+<div style="width:18px;height:18px;background:#2aa8ff;margin-right:8px"></div>
+Video
+</div>
+
+<div style="display:flex;align-items:center;margin-bottom:6px">
+<div style="width:18px;height:18px;background:#00cc66;margin-right:8px"></div>
+Audio
+</div>
+
+<div style="display:flex;align-items:center;margin-bottom:6px">
+<div style="width:18px;height:18px;background:#cc66ff;margin-right:8px"></div>
+Gallery
+</div>
+
+<div style="display:flex;align-items:center;margin-bottom:6px">
+<div style="width:18px;height:18px;background:#ff4444;margin-right:8px"></div>
+Back Button
+</div>
+
+</div>
+
+<!-- CENTER PANEL -->
+<div class="centerPanel">
+
+<div style="display:flex;justify-content:center;gap:20px;margin-bottom:10px">
+
+<div id="count" style="font-size:18px"></div>
+
+<div id="saveStatus" style="font-size:14px;color:#aaa">
+Saved ✓
+</div>
+
+</div>
+
+
+<div style="margin-bottom:10px;font-size:14px;color:#ccc">
+<b>Step 1:</b> Select your magazine image folder.<br>
+Images should be named like:<br>
+page1.jpg, page2.jpg, page3.jpg etc.<br>
+After loading, thumbnails will appear below.
+</div>
+
+<b>Load Magazine Pages</b><br>
+Select the folder containing all page images of the magazine.<br>
+Images should be named sequentially such as:<br>
+page1.jpg, page2.jpg, page3.jpg etc.<br>
+After loading, thumbnails will appear below for navigation.<br><br>
+
+<input type="file" id="folderInput" webkitdirectory multiple>
+
+<br><br>
+
+<b>Load Existing Hotspots (Optional)</b><br>
+Use this to reopen a previously exported hotspots.json file.<br>
+The tool will automatically rebuild all hotspot areas from the file.<br><br>
+
+<input type="file" id="jsonInput" accept=".json">
+
+<input type="file" id="galleryInput" accept=".json">
+
+
+<br><br>
+
+<select id="slideSelect"></select>
+
+<div id="thumbs"></div>
+
+<br>
+
+<div style="margin-bottom:10px">
+
+<b>Zoom</b><br>
+Adjust page zoom for precise hotspot placement.<br>
+Zoom keeps the page centered so coordinates stay accurate.<br>
+
+<input type="range" id="zoom" min="50" max="200" value="100">
+
+</div>
+
+<div id="viewer">
+<img id="page">
+</div></div>
+
+<!-- RIGHT PANEL -->
+<div class="rightPanel">
+
+<div class="controls">
+
+Page
+<input id="pageNum" size="4" readonly style="background:#333;color:#aaa">
+
+Issue Name
+<input id="issueName" value="issue1">
+
+Back Start Page
+<input id="backStart" size="4" value="4">
+
+TOC Page
+<input id="tocPage" size="4" value="3">
+
+Type
+
+<select id="type">
+
+<option value="jump">jump</option>
+<option value="video">video</option>
+<option value="audio">audio</option>
+<option value="audio_click">audio_click</option>
+<option value="back">back</option>
+<option value="external">external_link</option>
+<option value="image_popup">image_popup</option>
+<option value="zoom">figure_zoom</option>
+<option value="gallery">gallery</option>
+<option value="icon">icon</option>
+
+
+</select>
+
+Target
+<input id="target">
+
+File
+<input id="file">
+
+Gallery Count
+<input id="galleryCount" placeholder="e.g. 200">
+
+Auto Target
+<input type="checkbox" id="autoTarget">
+<br><br>
+
+Grid
+<input type="checkbox" id="gridToggle" checked>
+
+Snap to Grid
+<input type="checkbox" id="snapToggle" checked>
+
+</div>
+
+<div id="hotspotList" style="margin-top:10px;font-size:12px;color:#ddd"></div>
+
+<textarea id="result" placeholder="Hotspot data will appear here"></textarea>
+
+<div class="buttonStack">
+
+<div class="toolGroup">
+
+<b>Navigation</b>
+<button onclick="savePage();if(slideSelect.selectedIndex>0){slideSelect.selectedIndex--;loadSlide(slideSelect.value)}">Previous</button>
+<button onclick="savePage();if(slideSelect.selectedIndex<slides.length-1){slideSelect.selectedIndex++;loadSlide(slideSelect.value)}">Next</button>
+
+</div>
+
+<div class="toolGroup">
+
+<b>Hotspot Editing</b>
+<button onclick="deleteHotspotByNumber()">Delete</button>
+<button onclick="undoLast()">Undo</button>
+<button onclick="toggleHotspots()">Highlight Hotspots</button>
+
+</div>
+
+<div class="toolGroup">
+
+<b>Export</b>
+<button onclick="copyData()">Copy CSV</button>
+<button onclick="exportCSV()">Export CSV</button>
+<button onclick="exportJSON()">Export JSON</button>
+<button onclick="exportIssue()">Export Issue Package</button>
+
+</div>
+
+<div class="toolGroup">
+
+<b>Automation</b>
+<button onclick="generateBack()">Auto Back Buttons</button>
+<button onclick="clearAll()">Clear All</button>
+
+</div>
+
+</div>
+
+</div>
+
+<script>
+
+const folderInput=document.getElementById("folderInput")
+const slideSelect=document.getElementById("slideSelect")
+const page=document.getElementById("page")
+const viewer=document.getElementById("viewer")
+const thumbs=document.getElementById("thumbs")
+const result=document.getElementById("result")
+
+const pageNum=document.getElementById("pageNum")
+const type=document.getElementById("type")
+const target=document.getElementById("target")
+const file=document.getElementById("file")
+const autoTarget=document.getElementById("autoTarget")
+autoTarget.onchange=function(){
+
+if(this.checked){
+autoTargetCounter = parseInt(pageNum.value) + 1
+target.value = autoTargetCounter
+}else{
+autoTargetCounter = null
+}
+
+}
+
+const gridToggle=document.getElementById("gridToggle")
+const snapToggle=document.getElementById("snapToggle")
+
+/* INITIAL VARIABLES */
+
+let slides=[]
+let boxes=[]
+let pageHotspots={}
+let startX=null
+let startY=null
+let drawingBox=null
+let isDrawing=false
+let counter=1
+let selectedHotspot=null
+
+let autosaveKey="flipbook_hotspots"
+let autoGallery={}
+let autoTargetCounter=null
+let galleryCounts = {}
+let zoomCounters = {}
+
+/* HOTSPOT RESIZE WITH CTRL + SCROLL */
+
+viewer.addEventListener("wheel",function(e){
+
+if(!e.ctrlKey) return
+
+e.preventDefault()
+
+let last = boxes[boxes.length-1]
+
+if(!last) return
+
+let change = (e.deltaY<0 ? 5 : -5)
+
+let newW = last.box.offsetWidth+change
+let newH = last.box.offsetHeight+change
+
+if(newW < 20) newW = 20
+if(newH < 20) newH = 20
+const imgW = page.clientWidth
+const imgH = page.clientHeight
+
+console.log({
+x:(last.box.offsetLeft/imgW).toFixed(3),
+y:(last.box.offsetTop/imgH).toFixed(3),
+w:(last.box.offsetWidth/imgW).toFixed(3),
+h:(last.box.offsetHeight/imgH).toFixed(3)
+
+})
+
+})
+
+/* GRID TOGGLE */
+
+gridToggle.onchange=function(){
+
+if(this.checked){
+viewer.classList.add("grid")
+}else{
+viewer.classList.remove("grid")
+}
+
+}
+
+
+const GRID=10
+
+function reindexHotspots(){
+
+boxes.forEach((b,i)=>{
+b.box.dataset.index=i
+b.label.textContent=i+1
+})
+
+}
+
+function updateHotspotList(){
+
+const list=document.getElementById("hotspotList")
+list.innerHTML=""
+
+boxes.forEach((b,i)=>{
+
+let item=document.createElement("div")
+
+item.textContent="["+(i+1)+"] "+b.box.classList[1]
+item.style.cursor="pointer"
+
+item.onclick=function(){
+
+b.box.scrollIntoView({behavior:"smooth"})
+
+b.box.style.border="4px solid yellow"
+
+setTimeout(()=>{
+b.box.style.border=""
+},1000)
+
+if(confirm("Delete hotspot "+(i+1)+" ?")){
+
+b.box.remove()
+b.label.remove()
+
+boxes.splice(i,1)
+
+reindexHotspots()
+
+let rows=result.value.trim().split("\n")
+rows.splice(i+1,1)
+
+result.value=rows.join("\n")+"\n"
+
+updateHotspotList()
+
+}
+
+}
+
+list.appendChild(item)
+
+})
+
+}
+
+
+
+function exportJSON(){
+
+let lines=result.value.trim().split("\n")
+
+let header=(lines.shift() || "").match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g) || []
+
+let pages={}
+
+lines.forEach(line=>{
+
+if(!line.trim()) return
+
+let parts=line.match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g) || []
+
+let obj={}
+
+header.forEach((h,i)=>{
+obj[h]=parts[i]?.replace(/"/g,"")
+})
+
+let p=obj.page
+
+delete obj.page
+
+if(!pages[p]) pages[p]=[]
+
+pages[p].push(obj)
+
+})
+
+let blob=new Blob(
+[JSON.stringify(pages,null,2)],
+{type:"application/json"}
+)
+
+let a=document.createElement("a")
+a.href=URL.createObjectURL(blob)
+a.download="hotspots.json"
+a.click()
+
+}
+
+function clearAll(){
+
+if(confirm("Clear all saved hotspots?")){
+
+result.value="page,type,target,file,x,y,w,h\n"
+
+localStorage.removeItem(autosaveKey)
+
+pageHotspots={}
+
+boxes.forEach(b=>{
+b.box.remove()
+b.label.remove()
+})
+
+boxes=[]
+counter=1
+selectedHotspot=null
+
+updateHotspotList()
+
+}
+
+}
+
+
+/* ZOOM CONTROL
+Allows user to zoom slide for precise hotspot placement */
+
+document.getElementById("zoom").oninput=function(){
+
+let scale=this.value/100
+
+page.style.width = (900 * scale) + "px"
+
+setTimeout(refreshHotspots,10)
+
+}
+
+
+window.onload=function(){
+
+let saved=localStorage.getItem(autosaveKey)
+
+if(saved){
+result.value=saved
+}else{
+result.value="page,type,target,file,x,y,w,h\n"
+}
+setTimeout(debugHotspots,500)
+}
+
+folderInput.onchange=function(e){
+
+let path = e.target.files[0].webkitRelativePath
+let parts = path.split("/")
+
+if(parts.length>1 && parts[0].toLowerCase() !== "pages"){
+document.getElementById("issueName").value = parts[0]
+}
+
+
+slides=[]
+
+for(let f of e.target.files){
+
+let name=f.name.toLowerCase()
+
+if(/\.(png|jpg|jpeg|webp)$/i.test(name)){
+
+slides.push({
+name:f.name,
+url:URL.createObjectURL(f),
+file:f
+})
+
+}
+
+}
+
+
+slides.sort((a,b)=>{
+return a.name.localeCompare(b.name, undefined, {numeric:true})
+})
+
+document.getElementById("count").innerText=
+"Slides loaded: "+slides.length+" | Current page: "+pageNum.value
+
+console.log("Slides loaded:",slides.length)
+
+slideSelect.innerHTML=""
+thumbs.innerHTML=""
+
+buildUI()
+
+}
+
+function generateBack(){
+
+let start=parseInt(document.getElementById("backStart").value)
+let toc=parseInt(document.getElementById("tocPage").value)
+
+let end=slides.length
+
+if(!start || start<1){
+alert("Enter valid Back Start Page")
+return
+}
+
+if(!toc || toc<1){
+alert("Enter valid TOC page")
+return
+}
+
+let x=0.290
+let y=0.952
+let w=0.432
+let h=0.034
+
+let count=0
+
+for(let p=start; p<=end; p++){
+
+let row=p+',"back","'+toc+'","",'+x+','+y+','+w+','+h
+
+if(!result.value.includes(row)){
+result.value+=row+"\n"
+count++
+}
+
+}
+
+localStorage.setItem(autosaveKey,result.value)
+
+alert(count+" back buttons created from page "+start+" to "+end)
+
+}
+
+
+function savePage(){
+
+let rows = result.value.trim().split("\n")
+rows.shift()
+
+pageHotspots = {}
+
+rows.forEach(r=>{
+
+let parts = r.split(",")
+let p = parts[0]
+
+if(!pageHotspots[p]){
+pageHotspots[p] = []
+}
+
+pageHotspots[p].push(r)
+
+})
+
+}
+
+
+
+function buildUI(){
+
+slides.forEach((slide,i)=>{
+
+let opt=document.createElement("option")
+opt.value=i
+opt.textContent=slide.name
+slideSelect.appendChild(opt)
+
+let img=document.createElement("img")
+img.src=slide.url
+img.loading="lazy"
+
+img.onclick=function(){
+
+savePage()
+slideSelect.selectedIndex=i
+loadSlide(i)
+
+}
+
+thumbs.appendChild(img)
+
+})
+
+if(slides.length>0){
+loadSlide(0)
+}
+
+slideSelect.onchange=function(){
+savePage()
+loadSlide(this.value)
+}
+
+}
+
+
+function extractPageNumber(name){
+
+if(!name) return ""
+
+
+let m = name.match(/page\s*(\d+)/i)
+if(m) return parseInt(m[1])
+
+/* fallback: detect any number in filename */
+
+let n = name.match(/(\d+)/)
+if(n) return parseInt(n[1])
+
+return ""
+
+}
+
+
+function loadSlide(i){
+
+if(!slides[i]) return
+
+autoTargetCounter = null
+
+page.src=slides[i].url
+page.onload=function(){
+
+requestAnimationFrame(()=>{
+refreshHotspots()
+})
+
+}
+
+document.getElementById("count").innerText =
+"Slide "+(parseInt(i)+1)+" / "+slides.length+" | Page "+extractPageNumber(slides[i].name)
+
+let p=extractPageNumber(slides[i].name)
+
+pageNum.value=p
+
+if(!result.value.trim()){
+result.value="page,type,target,file,x,y,w,h\n"
+}
+
+
+boxes=[]
+counter=1
+selectedHotspot=null
+
+if(result.value===""){
+result.value="page,type,target,file,x,y,w,h\n"
+}
+
+document.querySelectorAll(".box,.label,.preview").forEach(e=>e.remove())
+
+boxes=[]
+rebuildHotspotsFromCSV()
+
+/* highlight current thumbnail */
+
+document.querySelectorAll("#thumbs img").forEach((img,idx)=>{
+
+if(idx==i){
+img.style.border="3px solid yellow"
+}else{
+img.style.border="2px solid #555"
+}
+
+})
+
+}
+
+
+function duplicateLast(){
+
+let last=boxes[boxes.length-1]
+
+if(!last) return
+
+let clone=last.box.cloneNode(true)
+
+viewer.appendChild(clone)
+
+clone.onclick=function(e){
+
+e.stopPropagation()
+
+selectedHotspot = clone
+
+document.querySelectorAll(".box").forEach(b=>{
+b.style.outline=""
+})
+
+clone.style.outline="3px solid yellow"
+viewer.style.cursor="move"
+
+}
+
+let label=document.createElement("div")
+label.className="label"
+label.textContent=counter
+
+label.style.left=clone.style.left
+label.style.top=clone.style.top
+
+viewer.appendChild(label)
+
+boxes.push({box:clone,label})
+
+clone.dataset.index = boxes.length-1
+
+/* duplicate CSV row */
+
+let rows=result.value.trim().split("\n")
+let lastRow=rows[rows.length-1]
+
+if(lastRow && !lastRow.startsWith("page")){
+result.value+=lastRow+"\n"
+}
+
+localStorage.setItem(autosaveKey,result.value)
+
+updateHotspotList()
+
+counter++
+
+}
+
+
+/* ===================================
+   SIMPLE 2-CLICK HOTSPOT SYSTEM
+   =================================== */
+
+let clickStage = 0
+let firstX = 0
+let firstY = 0
+let previewBox = null
+
+viewer.addEventListener("mousemove",function(e){
+
+if(clickStage !== 1 || !previewBox) return
+
+const rect = page.getBoundingClientRect()
+const viewerRect = viewer.getBoundingClientRect()
+
+let x = e.clientX - rect.left
+let y = e.clientY - rect.top
+
+let width = Math.abs(x-firstX)
+let height = Math.abs(y-firstY)
+
+let x1 = Math.min(firstX,x)
+let y1 = Math.min(firstY,y)
+
+previewBox.style.left = (rect.left - viewerRect.left + x1) + "px"
+previewBox.style.top  = (rect.top - viewerRect.top + y1) + "px"
+previewBox.style.width = width + "px"
+previewBox.style.height = height + "px"
+})
+
+viewer.addEventListener("click", function(e){
+
+const rect = page.getBoundingClientRect()
+
+/* ignore clicks outside image */
+
+if(
+e.clientX < rect.left ||
+e.clientX > rect.right ||
+e.clientY < rect.top ||
+e.clientY > rect.bottom
+){
+return
+}
+
+/* position relative to image */
+
+let x = e.clientX - rect.left
+let y = e.clientY - rect.top
+
+/* FIRST CLICK */
+
+if(clickStage === 0){
+
+firstX = x
+firstY = y
+clickStage = 1
+
+previewBox = document.createElement("div")
+previewBox.className = "box preview"
+
+const viewerRect = viewer.getBoundingClientRect()
+
+previewBox.style.left = (rect.left - viewerRect.left + firstX) + "px"
+previewBox.style.top  = (rect.top - viewerRect.top + firstY) + "px"
+previewBox.style.width = "1px"
+previewBox.style.height = "1px"
+
+viewer.appendChild(previewBox)
+
+return
+}
+
+
+
+/* SECOND CLICK */
+
+if(previewBox){
+previewBox.remove()
+previewBox = null
+}
+let x1 = Math.min(firstX,x)
+let y1 = Math.min(firstY,y)
+
+let width = Math.abs(x-firstX)
+let height = Math.abs(y-firstY)
+
+
+/* create hotspot */
+
+let box=document.createElement("div")
+box.className="box "+type.value
+
+const viewerRect = viewer.getBoundingClientRect()
+
+box.style.left = (rect.left - viewerRect.left + x1) + "px"
+box.style.top  = (rect.top - viewerRect.top + y1) + "px"
+
+box.style.width = width + "px"
+box.style.height = height + "px"
+
+viewer.appendChild(box)
+
+/* label */
+
+let label=document.createElement("div")
+label.className="label"
+label.textContent=counter
+
+label.style.left = box.style.left
+label.style.top  = box.style.top
+
+viewer.appendChild(label)
+
+boxes.push({box,label})
+box.dataset.index = boxes.length-1
+
+updateHotspotList()
+
+/* normalized coordinates */
+
+const imgW = page.naturalWidth
+const imgH = page.naturalHeight
+
+const displayW = page.clientWidth
+const displayH = page.clientHeight
+
+const scaleX = imgW / displayW
+const scaleY = imgH / displayH
+
+x1 = x1 * scaleX
+y1 = y1 * scaleY
+width = width * scaleX
+height = height * scaleY
+
+let nx=(x1/imgW).toFixed(3)
+let ny=(y1/imgH).toFixed(3)
+let nw=(width/imgW).toFixed(3)
+let nh=(height/imgH).toFixed(3)
+
+/* store normalized values for zoom refresh */
+
+box.dataset.x = nx
+box.dataset.y = ny
+box.dataset.w = nw
+box.dataset.h = nh
+
+let tgt = target.value
+
+if(autoTarget.checked && type.value==="jump"){
+
+/* If user manually typed a value, start from that */
+if(autoTargetCounter===null){
+autoTargetCounter=parseInt(target.value || pageNum.value)+1
+}
+
+/* use current target */
+tgt = target.value
+
+/* increment for next hotspot */
+autoTargetCounter = parseInt(tgt) + 1
+target.value = autoTargetCounter
+
+}
+
+/* store gallery count */
+
+if(type.value === "gallery" && file.value){
+
+let count = parseInt(document.getElementById("galleryCount").value)
+
+if(count){
+galleryCounts[file.value] = count
+}
+
+}
+
+
+/* normalize file path */
+
+let filePath = normalizeFilePath(file.value.trim())
+
+let pageID = extractPageNumber(slides[slideSelect.value]?.name) || pageNum.value
+
+/* AUTO ZOOM IMAGE PATH */
+
+if((type.value === "zoom" || type.value === "figure_zoom") && !filePath){
+
+filePath = getNextZoomImage(pageID)
+
+file.value = filePath
+
+}
+
+/* normalize extension */
+
+if(type.value === "zoom" || type.value === "figure_zoom"){
+
+filePath = filePath
+.replace(/\/jpg$/i,".jpg")
+.replace(/\/png$/i,".png")
+
+}
+
+/* build row */
+
+let row = [
+pageID,
+
+`"${type.value}"`,
+`"${tgt||""}"`,
+`"${filePath}"`,
+nx,
+ny,
+nw,
+nh
+].join(",")
+
+result.value+=row + "\n"
+savePage()
+/* store row in pageHotspots so page switching works */
+
+let p = extractPageNumber(slides[slideSelect.value].name)
+
+if(!pageHotspots[p]){
+pageHotspots[p] = []
+}
+
+pageHotspots[p].push(row)
+
+localStorage.setItem(autosaveKey,result.value)
+
+counter++
+clickStage=0
+
+})
+
+function refreshHotspots(){
+
+const imgW = page.clientWidth
+const imgH = page.clientHeight
+
+if(!imgW || !imgH) return
+
+boxes.forEach(b=>{
+
+let x = parseFloat(b.box.dataset.x || 0)
+let y = parseFloat(b.box.dataset.y || 0)
+let w = parseFloat(b.box.dataset.w || 0)
+let h = parseFloat(b.box.dataset.h || 0)
+
+b.box.style.left = (x * imgW) + "px"
+b.box.style.top  = (y * imgH) + "px"
+b.box.style.width  = (w * imgW) + "px"
+b.box.style.height = (h * imgH) + "px"
+
+b.label.style.left = b.box.style.left
+b.label.style.top  = b.box.style.top
+
+})
+
+}
+
+/* ===================================
+   WINDOW RESIZE HOTSPOT STABILIZER
+   =================================== */
+
+let resizeTimer = null
+
+window.addEventListener("resize", function(){
+
+clearTimeout(resizeTimer)
+
+resizeTimer = setTimeout(function(){
+
+requestAnimationFrame(refreshHotspots)
+
+}, 60)
+
+})
+
+
+
+function rebuildHotspotsFromCSV(){
+
+const imgW = page.clientWidth
+const imgH = page.clientHeight
+
+let rows=result.value.trim().split("\n")
+rows.shift()
+
+let currentPage = pageNum.value
+
+rows.forEach((r,i)=>{
+
+let parts=r.match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g) || []
+
+if(parts[0] != currentPage) return
+
+let x=parseFloat(parts[4])
+let y=parseFloat(parts[5])
+let w=parseFloat(parts[6])
+let h=parseFloat(parts[7])
+
+let type=parts[1].replace(/"/g,"")
+
+let box=document.createElement("div")
+box.className="box "+type
+
+box.style.left=(x*imgW)+"px"
+box.style.top=(y*imgH)+"px"
+box.style.width=(w*imgW)+"px"
+box.style.height=(h*imgH)+"px"
+
+box.dataset.x=x
+box.dataset.y=y
+box.dataset.w=w
+box.dataset.h=h
+
+viewer.appendChild(box)
+
+let label=document.createElement("div")
+label.className="label"
+label.textContent=i+1
+
+label.style.left=box.style.left
+label.style.top=box.style.top
+
+viewer.appendChild(label)
+
+boxes.push({box,label})
+
+})
+
+}
+
+function debugHotspots(){
+
+let rows=result.value.trim().split("\n")
+rows.shift()
+
+let pages=new Set()
+let galleries=new Set()
+
+rows.forEach(r=>{
+
+if(!r.trim()) return
+
+let p=r.split(",")
+
+if(!p[0]) return
+
+pages.add(p[0])
+
+let type=p[1].replace(/"/g,"")
+let file=p[3].replace(/"/g,"")
+
+if(type==="zoom" || type==="figure_zoom" || type==="gallery"){
+galleries.add(file.split("/")[0])
+}
+
+})
+
+console.log("Pages detected:",[...pages])
+console.log("Gallery folders:",[...galleries])
+console.log("Gallery counts:",galleryCounts)
+
+}
+
+function deleteHotspotByNumber(){
+
+if(boxes.length===0){
+alert("No hotspots to delete")
+return
+}
+
+let num = prompt("Enter hotspot number to delete")
+
+num = parseInt(num)
+
+if(!num || num<1 || num>boxes.length){
+alert("Invalid number")
+return
+}
+
+let idx = num-1
+
+boxes[idx].box.remove()
+boxes[idx].label.remove()
+
+boxes.splice(idx,1)
+
+reindexHotspots()
+
+let rows=result.value.trim().split("\n")
+
+rows.splice(num,1)
+
+result.value=rows.join("\n")+"\n"
+
+updateHotspotList()
+
+}
+
+
+function copyData(){
+
+result.select()
+document.execCommand("copy")
+alert("CSV rows copied")
+
+}
+
+function exportCSV(){
+
+let blob=new Blob([result.value],{type:"text/csv"})
+
+let a=document.createElement("a")
+a.href=URL.createObjectURL(blob)
+a.download="hotspots.csv"
+a.click()
+
+}
+
+document.addEventListener("keydown",function(e){
+
+/* ESC cancels first click */
+if(e.key==="Escape"){
+clickStage = 0
+
+if(previewBox){
+previewBox.remove()
+previewBox=null
+}
+
+return
+}
+
+/* Delete selected hotspot */
+if(e.key==="Delete" && selectedHotspot){
+
+let idx = selectedHotspot.dataset.index
+
+if(boxes[idx]){
+
+boxes[idx].box.remove()
+boxes[idx].label.remove()
+
+boxes.splice(idx,1)
+
+reindexHotspots()
+
+let rows=result.value.trim().split("\n")
+
+rows.splice(idx+1,1)
+
+result.value=rows.join("\n")+"\n"
+
+updateHotspotList()
+
+}
+
+selectedHotspot=null
+}
+
+/* ignore typing inside inputs */
+
+if(e.target.tagName==="INPUT" || e.target.tagName==="TEXTAREA") return
+
+/* hotkeys */
+
+if(e.key==="u") undoLast()
+
+if(e.key==="c") copyData()
+
+if(e.key==="e") exportCSV()
+
+if(e.key==="n"){
+savePage()
+if(slideSelect.selectedIndex < slides.length-1){
+slideSelect.selectedIndex++
+}
+loadSlide(slideSelect.value)
+}
+
+if(e.key==="p"){
+savePage()
+if(slideSelect.selectedIndex > 0){
+slideSelect.selectedIndex--
+}
+loadSlide(slideSelect.value)
+}
+
+})
+
+function normalizeFilePath(file){
+
+if(!file) return file
+
+/* convert page7.1.jpg → page7/1.jpg */
+
+let m = file.match(/^page(\d+)\.(\d+)\.(jpg|png|webp)$/i)
+
+if(m){
+return "page"+m[1]+"/"+m[2]+"."+m[3]
+}
+
+return file
+}
+
+function exportIssue(){
+
+function validateHotspots(){
+
+let errors=[]
+
+
+lines.shift()
+
+let seenHotspots = new Set()
+
+lines.forEach((row,i)=>{
+
+let lineNum=i+2
+
+if(!row.trim()) return
+
+let parts=row.match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g) || []
+
+let page=parts[0]
+let type=(parts[1]||"").replace(/"/g,"")
+let target=(parts[2]||"").replace(/"/g,"")
+let file=(parts[3]||"").replace(/"/g,"")
+
+let x=parseFloat(parts[4])
+let y=parseFloat(parts[5])
+let w=parseFloat(parts[6])
+let h=parseFloat(parts[7])
+
+let key = page+"_"+x+"_"+y+"_"+w+"_"+h
+
+if(seenHotspots.has(key)){
+errors.push("Line "+lineNum+" → duplicate hotspot detected")
+}
+
+seenHotspots.add(key)
+
+if(!page || isNaN(page))
+errors.push("Line "+lineNum+" → invalid page number")
+
+if(type==="jump" && target && !slides[target-1])
+errors.push("Line "+lineNum+" → jump target "+target+" does not exist")
+
+if(type==="external_link" && file && !file.startsWith("http"))
+errors.push("Line "+lineNum+" → external link must start with http")
+
+if(type==="gallery" && !file)
+errors.push("Line "+lineNum+" → gallery hotspot missing folder name")
+
+if(isNaN(x)||isNaN(y)||isNaN(w)||isNaN(h))
+errors.push("Line "+lineNum+" → invalid hotspot coordinates")
+
+})
+
+return errors
+}
+
+let zip=new JSZip()
+let problems = validateHotspots()
+
+if(problems.length){
+
+alert(
+"Export stopped. Fix the following errors:\n\n"+
+problems.join("\n")
+)
+
+console.warn("Hotspot validation errors:",problems)
+
+/* AUTO FOCUS FIRST ERROR LINE */
+
+let firstError = problems[0].match(/Line\s(\d+)/)
+
+if(firstError){
+
+let lineNumber = parseInt(firstError[1])
+
+let rows = result.value.split("\n")
+
+let charIndex = 0
+
+for(let i=0;i<lineNumber-1;i++){
+charIndex += rows[i].length + 1
+}
+
+result.focus()
+result.setSelectionRange(charIndex, charIndex + rows[lineNumber-1].length)
+
+/* highlight briefly */
+
+result.style.background="#330000"
+
+setTimeout(()=>{
+result.style.background=""
+},800)
+
+}
+
+return
+}
+
+/* ADD PAGE IMAGES */
+
+let pageFolder = zip.folder("pages")
+
+console.log("Total slides:", slides.length)
+
+slides.forEach(slide=>{
+
+console.log("Adding page to zip:", slide.name)
+
+pageFolder.file(slide.name, slide.file)
+
+})
+
+/* AUTO BUILD GALLERY (json + editor + zoom) */
+
+let gallery = {...autoGallery}
+
+/* ensure arrays */
+
+Object.keys(gallery).forEach(k=>{
+if(!Array.isArray(gallery[k])) gallery[k]=[]
+})
+
+/* generate from editor gallery counts */
+
+Object.keys(galleryCounts).forEach(folder=>{
+
+let count = parseInt(galleryCounts[folder])
+if(!count || count<1) return
+
+if(!gallery[folder]) gallery[folder]=[]
+
+for(let i=1;i<=count;i++){
+
+let img="gallery/"+folder+"/"+i+".jpg"
+
+if(!gallery[folder].includes(img)){
+gallery[folder].push(img)
+}
+
+}
+
+})
+
+/* detect zoom hotspots */
+
+let lines=result.value.trim().split("\n")
+lines.shift()
+
+lines.forEach(row=>{
+
+let parts=row.match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g) || []
+
+let type=(parts[1]||"").replace(/"/g,"")
+let file=(parts[3]||"").replace(/"/g,"")
+
+if(type==="zoom" || type==="figure_zoom"){
+
+let folder=file.split("/")[0]
+let img="gallery/"+file
+
+if(!gallery[folder]) gallery[folder]=[]
+
+if(!gallery[folder].includes(img)){
+gallery[folder].push(img)
+}
+
+}
+
+})
+
+/* numeric sort */
+
+Object.keys(gallery).forEach(folder=>{
+
+gallery[folder].sort((a,b)=>{
+
+let na=parseInt(a.match(/(\d+)\.(jpg|png|webp)/i)?.[1]||0)
+let nb=parseInt(b.match(/(\d+)\.(jpg|png|webp)/i)?.[1]||0)
+
+return na-nb
+
+})
+
+})
+
+
+/* CONFIG */
+
+let issueNameField = document.getElementById("issueName")
+
+let issueName = "issue1"
+
+if(issueNameField && issueNameField.value.trim() !== ""){
+issueName = issueNameField.value.trim()
+}
+
+let config={
+totalSlides:slides.length,
+startPage:1,
+pageFolder:"pages/",
+hotspotFile:"hotspots.json",
+galleryFile:"gallery.json",
+issuePath:issueName
+}
+
+
+zip.file("config.js","window.FLIPBOOK_CONFIG="+JSON.stringify(config,null,2))
+let year = new Date().getFullYear()
+
+let issueLink = "index.html?issue=" + year + "/" + issueName
+
+/* create automatic launcher */
+
+let launcherHTML = `
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Open Issue</title>
+<style>
+body{
+font-family:Arial;
+background:#111;
+color:white;
+display:flex;
+align-items:center;
+justify-content:center;
+height:100vh;
+margin:0;
+}
+a{
+background:#ff6600;
+color:white;
+padding:20px 30px;
+font-size:22px;
+text-decoration:none;
+border-radius:8px;
+}
+</style>
+</head>
+<body>
+
+<a href="../${issueLink}">Open ${issueName}</a>
+
+</body>
+</html>
+`
+
+zip.file("open_issue.html", launcherHTML)
+
+console.log("Open magazine using:")
+console.log(issueLink)
+
+/* EMPTY GALLERY */
+
+
+zip.file("gallery.json",JSON.stringify(gallery,null,2))
+
+/* BUILD HOTSPOTS */
+
+let csv = result.value.trim().split("\n")
+
+let header=(csv.shift() || "").match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g) || []
+
+let pages={}
+
+csv.forEach(line=>{
+
+if(!line.trim()) return
+
+let parts=line.match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g) || []
+
+let obj={}
+
+header.forEach((h,i)=>{
+obj[h]=(parts[i]||"").replace(/"/g,"")
+})
+
+let p=obj.page
+delete obj.page
+
+if(!pages[p]) pages[p]=[]
+
+pages[p].push(obj)
+
+})
+
+zip.file("hotspots.json",JSON.stringify(pages,null,2))
+
+console.log("----- ISSUE EXPORT SUMMARY -----")
+console.log("Issue:",issueName)
+console.log("Slides:",slides.length)
+console.log("Hotspots:",csv.length)
+console.log("Gallery folders:",Object.keys(gallery).length)
+
+/* GENERATE ZIP */
+
+zip.generateAsync({type:"blob"}).then(function(content){
+
+let a=document.createElement("a")
+a.href=URL.createObjectURL(content)
+a.download="issue_package.zip"
+a.click()
+
+})
+}
+
+document.getElementById("jsonInput").onchange = function(e){
+
+const file = e.target.files[0]
+if(!file) return
+
+const reader = new FileReader()
+
+reader.onload = function(){
+
+let data = JSON.parse(reader.result)
+
+result.value="page,type,target,file,x,y,w,h\n"
+
+pageHotspots = {}
+
+Object.keys(data).forEach(page=>{
+
+let pageNumOnly = parseInt(page.toString().replace(/[^0-9]/g,""))
+
+pageHotspots[pageNumOnly] = []
+
+data[page].forEach(h=>{
+
+let row = [
+pageNumOnly,
+`"${h.type || ""}"`,
+`"${h.target || ""}"`,
+`"${h.file || ""}"`,
+(h.x ?? 0),
+(h.y ?? 0),
+(h.w ?? 0),
+(h.h ?? 0)
+].join(",")
+
+result.value += row + "\n"
+
+pageHotspots[pageNumOnly].push(row)
+
+})
+
+})
+
+localStorage.setItem(autosaveKey,result.value)
+
+/* reload current slide so hotspots appear immediately */
+
+loadSlide(slideSelect.value)
+
+alert("Hotspots loaded")
+
+}
+reader.readAsText(file)
+
+}
+
+document.getElementById("galleryInput").onchange=function(e){
+
+const file=e.target.files[0]
+if(!file) return
+
+loadGalleryJSON(file)
+
+}
+
+
+function loadGalleryJSON(file){
+
+const reader = new FileReader()
+
+reader.onload=function(){
+
+try{
+autoGallery = JSON.parse(reader.result)
+console.log("Gallery loaded:",autoGallery)
+alert("Gallery.json loaded successfully")
+}
+catch(e){
+alert("Invalid gallery.json file")
+}
+
+}
+
+reader.readAsText(file)
+
+}
+
+let highlightMode=false
+
+function toggleHotspots(){
+
+highlightMode=!highlightMode
+
+boxes.forEach(b=>{
+
+if(highlightMode){
+
+b.box.style.background="rgba(255,0,0,0.2)"
+
+}else{
+
+b.box.style.background="transparent"
+
+}
+
+})
+
+}
+
+function undoLast(){
+
+if(boxes.length===0) return
+
+let last=boxes.pop()
+
+last.box.remove()
+last.label.remove()
+
+let rows=result.value.trim().split("\n")
+
+rows.pop()
+
+result.value=rows.join("\n")+"\n"
+
+updateHotspotList()
+
+}
+
+window.onerror=function(msg,src,line){
+alert("JS Error: "+msg+" line:"+line)
+}
+setInterval(function(){
+
+localStorage.setItem(autosaveKey,result.value)
+
+let s=document.getElementById("saveStatus")
+
+s.textContent="Saving..."
+
+setTimeout(()=>{
+s.textContent="Saved ✓"
+},400)
+
+},3000)
+
+</script>
+
+</body>
+
+</html>

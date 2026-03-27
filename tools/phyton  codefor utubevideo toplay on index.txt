@@ -1,0 +1,13 @@
+Because we now use fetch() to read JSON, opening the file like this may fail:
+
+file:///C:/flipbook/index.html
+
+Use a tiny local server while editing:
+
+python -m http.server
+
+Then open:
+
+http://localhost:8000
+
+When uploaded to your website it works normally.
