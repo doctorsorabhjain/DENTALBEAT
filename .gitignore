@@ -1,9 +1,0 @@
-.git
-.git/*
-node_modules
-*.zip
-*.mp4
-*.psd
-git add .
-git commit -m "fix ignored files"
-git push
